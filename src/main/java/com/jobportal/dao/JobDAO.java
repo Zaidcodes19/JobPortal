@@ -60,4 +60,52 @@ public class JobDAO {
             return false;
         }
     }
+
+    public java.util.List<Job> getAllJobs() throws SQLException {
+
+        String sql = """
+                SELECT
+                    id,
+                    recruiter_id,
+                    title,
+                    company_name,
+                    location,
+                    job_type,
+                    description,
+                    requirements,
+                    salary_min,
+                    salary_max,
+                    created_at
+                FROM jobs
+                ORDER BY created_at DESC, id DESC
+                """;
+
+        java.util.List<Job> jobs = new java.util.ArrayList<>();
+
+        try (Connection connection = DBConnection.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql);
+                ResultSet resultSet = statement.executeQuery()) {
+
+            while (resultSet.next()) {
+                Job job = new Job();
+
+                job.setId(resultSet.getInt("id"));
+                job.setRecruiterId(resultSet.getInt("recruiter_id"));
+                job.setTitle(resultSet.getString("title"));
+                job.setCompanyName(resultSet.getString("company_name"));
+                job.setLocation(resultSet.getString("location"));
+                job.setJobType(resultSet.getString("job_type"));
+                job.setDescription(resultSet.getString("description"));
+                job.setRequirements(resultSet.getString("requirements"));
+                job.setSalaryMin(resultSet.getBigDecimal("salary_min"));
+                job.setSalaryMax(resultSet.getBigDecimal("salary_max"));
+                job.setCreatedAt(resultSet.getTimestamp("created_at"));
+
+                jobs.add(job);
+            }
+        }
+
+        return jobs;
+    }
+
 }

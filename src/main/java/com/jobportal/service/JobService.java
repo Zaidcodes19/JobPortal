@@ -1,6 +1,7 @@
 
 package com.jobportal.service;
 
+import java.util.List;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 
@@ -59,6 +60,10 @@ public class JobService {
         }
 
         return job;
+    }
+
+    public List<Job> getAllJobs() throws SQLException {
+        return jobDAO.getAllJobs();
     }
 
     private void validateRequiredField(
