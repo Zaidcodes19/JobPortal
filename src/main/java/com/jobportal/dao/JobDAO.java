@@ -1,12 +1,13 @@
 
 package com.jobportal.dao;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 
 import com.jobportal.model.Job;
 import com.jobportal.util.DBConnection;
@@ -61,9 +62,16 @@ public class JobDAO {
         }
     }
 
-    public java.util.List<Job> getAllJobs() throws SQLException {
+    public List<Job> getAllJobs() throws SQLException {
+        return searchJobs(null, null, null);
+    }
 
-        String sql = """
+    public List<Job> searchJobs(
+            String keyword,
+            String location,
+            String jobType) throws SQLException {
+
+        StringBuilder sql = new StringBuilder("""
                 SELECT
                     id,
                     recruiter_id,
@@ -77,31 +85,63 @@ public class JobDAO {
                     salary_max,
                     created_at
                 FROM jobs
-                ORDER BY created_at DESC, id DESC
-                """;
+                WHERE 1 = 1
+                """);
 
-        java.util.List<Job> jobs = new java.util.ArrayList<>();
+        List<Object> parameters = new ArrayList<>();
+
+        if (keyword != null && !keyword.isBlank()) {
+            sql.append("""
+                     AND (
+                        title LIKE ?
+                        OR company_name LIKE ?
+                     )
+                    """);
+
+            String pattern = "%" + keyword.trim() + "%";
+            parameters.add(pattern);
+            parameters.add(pattern);
+        }
+
+        if (location != null && !location.isBlank()) {
+            sql.append(" AND location LIKE ?");
+            parameters.add("%" + location.trim() + "%");
+        }
+
+        if (jobType != null && !jobType.isBlank()) {
+            sql.append(" AND job_type = ?");
+            parameters.add(jobType.trim().toUpperCase());
+        }
+
+        sql.append(" ORDER BY created_at DESC, id DESC");
+
+        List<Job> jobs = new ArrayList<>();
 
         try (Connection connection = DBConnection.getConnection();
-                PreparedStatement statement = connection.prepareStatement(sql);
-                ResultSet resultSet = statement.executeQuery()) {
+                PreparedStatement statement = connection.prepareStatement(sql.toString())) {
 
-            while (resultSet.next()) {
-                Job job = new Job();
+            for (int i = 0; i < parameters.size(); i++) {
+                statement.setObject(i + 1, parameters.get(i));
+            }
 
-                job.setId(resultSet.getInt("id"));
-                job.setRecruiterId(resultSet.getInt("recruiter_id"));
-                job.setTitle(resultSet.getString("title"));
-                job.setCompanyName(resultSet.getString("company_name"));
-                job.setLocation(resultSet.getString("location"));
-                job.setJobType(resultSet.getString("job_type"));
-                job.setDescription(resultSet.getString("description"));
-                job.setRequirements(resultSet.getString("requirements"));
-                job.setSalaryMin(resultSet.getBigDecimal("salary_min"));
-                job.setSalaryMax(resultSet.getBigDecimal("salary_max"));
-                job.setCreatedAt(resultSet.getTimestamp("created_at"));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    Job job = new Job();
 
-                jobs.add(job);
+                    job.setId(resultSet.getInt("id"));
+                    job.setRecruiterId(resultSet.getInt("recruiter_id"));
+                    job.setTitle(resultSet.getString("title"));
+                    job.setCompanyName(resultSet.getString("company_name"));
+                    job.setLocation(resultSet.getString("location"));
+                    job.setJobType(resultSet.getString("job_type"));
+                    job.setDescription(resultSet.getString("description"));
+                    job.setRequirements(resultSet.getString("requirements"));
+                    job.setSalaryMin(resultSet.getBigDecimal("salary_min"));
+                    job.setSalaryMax(resultSet.getBigDecimal("salary_max"));
+                    job.setCreatedAt(resultSet.getTimestamp("created_at"));
+
+                    jobs.add(job);
+                }
             }
         }
 

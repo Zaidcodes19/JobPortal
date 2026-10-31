@@ -19,36 +19,43 @@ import jakarta.servlet.http.HttpServletResponse;
 @WebServlet("/api/jobs")
 public class JobListServlet extends HttpServlet {
 
-    private final JobService jobService = new JobService();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+        private final JobService jobService = new JobService();
+        private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Override
-    protected void doGet(
-            HttpServletRequest request,
-            HttpServletResponse response)
-            throws ServletException, IOException {
+        @Override
+        protected void doGet(
+                        HttpServletRequest request,
+                        HttpServletResponse response)
+                        throws ServletException, IOException {
 
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
+                response.setContentType("application/json");
+                response.setCharacterEncoding("UTF-8");
 
-        try {
-            List<Job> jobs = jobService.getAllJobs();
+                try {
+                        String keyword = request.getParameter("keyword");
+                        String location = request.getParameter("location");
+                        String jobType = request.getParameter("jobType");
 
-            objectMapper.writeValue(
-                    response.getWriter(),
-                    jobs);
+                        List<Job> jobs = jobService.searchJobs(
+                                        keyword,
+                                        location,
+                                        jobType);
 
-        } catch (SQLException e) {
-            getServletContext().log(
-                    "Failed to retrieve job listings.", e);
+                        objectMapper.writeValue(
+                                        response.getWriter(),
+                                        jobs);
 
-            response.setStatus(
-                    HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                } catch (SQLException e) {
+                        getServletContext().log(
+                                        "Failed to retrieve job listings.", e);
 
-            objectMapper.writeValue(
-                    response.getWriter(),
-                    Map.of("error",
-                            "Unable to retrieve job listings."));
+                        response.setStatus(
+                                        HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+
+                        objectMapper.writeValue(
+                                        response.getWriter(),
+                                        Map.of("error",
+                                                        "Unable to retrieve job listings."));
+                }
         }
-    }
 }

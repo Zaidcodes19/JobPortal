@@ -66,6 +66,14 @@ public class JobService {
         return jobDAO.getAllJobs();
     }
 
+    public List<Job> searchJobs(
+            String keyword,
+            String location,
+            String jobType) throws SQLException {
+
+        return jobDAO.searchJobs(keyword, location, jobType);
+    }
+
     private void validateRequiredField(
             String value,
             String fieldName) {
