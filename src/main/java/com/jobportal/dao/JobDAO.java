@@ -63,57 +63,25 @@ public class JobDAO {
     }
 
     public List<Job> getAllJobs() throws SQLException {
-        return searchJobs(null, null, null);
+        return searchJobs(null, null, null, Integer.MAX_VALUE, 0);
     }
 
     public List<Job> searchJobs(
             String keyword,
             String location,
-            String jobType) throws SQLException {
-
-        StringBuilder sql = new StringBuilder("""
-                SELECT
-                    id,
-                    recruiter_id,
-                    title,
-                    company_name,
-                    location,
-                    job_type,
-                    description,
-                    requirements,
-                    salary_min,
-                    salary_max,
-                    created_at
-                FROM jobs
-                WHERE 1 = 1
-                """);
+            String jobType,
+            int limit,
+            int offset) throws SQLException {
 
         List<Object> parameters = new ArrayList<>();
 
-        if (keyword != null && !keyword.isBlank()) {
-            sql.append("""
-                     AND (
-                        title LIKE ?
-                        OR company_name LIKE ?
-                     )
-                    """);
+        StringBuilder sql = buildJobSearchQuery(
+                keyword, location, jobType, parameters, false);
 
-            String pattern = "%" + keyword.trim() + "%";
-            parameters.add(pattern);
-            parameters.add(pattern);
-        }
+        sql.append(" ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?");
 
-        if (location != null && !location.isBlank()) {
-            sql.append(" AND location LIKE ?");
-            parameters.add("%" + location.trim() + "%");
-        }
-
-        if (jobType != null && !jobType.isBlank()) {
-            sql.append(" AND job_type = ?");
-            parameters.add(jobType.trim().toUpperCase());
-        }
-
-        sql.append(" ORDER BY created_at DESC, id DESC");
+        parameters.add(limit);
+        parameters.add(offset);
 
         List<Job> jobs = new ArrayList<>();
 
@@ -148,4 +116,87 @@ public class JobDAO {
         return jobs;
     }
 
+    private StringBuilder buildJobSearchQuery(
+            String keyword,
+            String location,
+            String jobType,
+            List<Object> parameters,
+            boolean countOnly) {
+
+        StringBuilder sql;
+
+        if (countOnly) {
+            sql = new StringBuilder(
+                    "SELECT COUNT(*) FROM jobs WHERE 1 = 1");
+        } else {
+            sql = new StringBuilder("""
+                    SELECT
+                        id,
+                        recruiter_id,
+                        title,
+                        company_name,
+                        location,
+                        job_type,
+                        description,
+                        requirements,
+                        salary_min,
+                        salary_max,
+                        created_at
+                    FROM jobs
+                    WHERE 1 = 1
+                    """);
+        }
+
+        if (keyword != null && !keyword.isBlank()) {
+            sql.append("""
+                     AND (
+                        title LIKE ?
+                        OR company_name LIKE ?
+                     )
+                    """);
+
+            String pattern = "%" + keyword.trim() + "%";
+            parameters.add(pattern);
+            parameters.add(pattern);
+        }
+
+        if (location != null && !location.isBlank()) {
+            sql.append(" AND location LIKE ?");
+            parameters.add("%" + location.trim() + "%");
+        }
+
+        if (jobType != null && !jobType.isBlank()) {
+            sql.append(" AND job_type = ?");
+            parameters.add(jobType.trim().toUpperCase());
+        }
+
+        return sql;
+    }
+
+    public long countJobs(
+            String keyword,
+            String location,
+            String jobType) throws SQLException {
+
+        List<Object> parameters = new ArrayList<>();
+
+        StringBuilder sql = buildJobSearchQuery(
+                keyword, location, jobType, parameters, true);
+
+        try (Connection connection = DBConnection.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            for (int i = 0; i < parameters.size(); i++) {
+                statement.setObject(i + 1, parameters.get(i));
+            }
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getLong(1);
+                }
+            }
+        }
+
+        return 0;
+    }
 }

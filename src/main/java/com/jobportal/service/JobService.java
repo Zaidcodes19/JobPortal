@@ -7,6 +7,7 @@ import java.sql.SQLException;
 
 import com.jobportal.dao.JobDAO;
 import com.jobportal.model.Job;
+import com.jobportal.model.JobPage;
 
 public class JobService {
 
@@ -66,12 +67,42 @@ public class JobService {
         return jobDAO.getAllJobs();
     }
 
-    public List<Job> searchJobs(
+    public JobPage searchJobs(
             String keyword,
             String location,
-            String jobType) throws SQLException {
+            String jobType,
+            int page,
+            int size) throws SQLException {
 
-        return jobDAO.searchJobs(keyword, location, jobType);
+        if (page < 1) {
+            throw new IllegalArgumentException(
+                    "Page number must be at least 1.");
+        }
+
+        if (size < 1 || size > 50) {
+            throw new IllegalArgumentException(
+                    "Page size must be between 1 and 50.");
+        }
+
+        long offsetLong = ((long) page - 1) * size;
+
+        if (offsetLong > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(
+                    "Page number is too large.");
+        }
+
+        int offset = (int) offsetLong;
+
+        List<Job> jobs = jobDAO.searchJobs(
+                keyword, location, jobType, size, offset);
+
+        long totalJobs = jobDAO.countJobs(
+                keyword, location, jobType);
+
+        long totalPages = (totalJobs + size - 1) / size;
+
+        return new JobPage(
+                jobs, page, size, totalJobs, totalPages);
     }
 
     private void validateRequiredField(

@@ -3,11 +3,10 @@ package com.jobportal.controller;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jobportal.model.Job;
+import com.jobportal.model.JobPage;
 import com.jobportal.service.JobService;
 
 import jakarta.servlet.ServletException;
@@ -36,14 +35,30 @@ public class JobListServlet extends HttpServlet {
                         String location = request.getParameter("location");
                         String jobType = request.getParameter("jobType");
 
-                        List<Job> jobs = jobService.searchJobs(
+                        int page = parseIntegerParameter(
+                                        request.getParameter("page"), 1, "page");
+
+                        int size = parseIntegerParameter(
+                                        request.getParameter("size"), 10, "size");
+
+                        JobPage result = jobService.searchJobs(
                                         keyword,
                                         location,
-                                        jobType);
+                                        jobType,
+                                        page,
+                                        size);
 
                         objectMapper.writeValue(
                                         response.getWriter(),
-                                        jobs);
+                                        result);
+
+                } catch (IllegalArgumentException e) {
+                        response.setStatus(
+                                        HttpServletResponse.SC_BAD_REQUEST);
+
+                        objectMapper.writeValue(
+                                        response.getWriter(),
+                                        Map.of("error", e.getMessage()));
 
                 } catch (SQLException e) {
                         getServletContext().log(
@@ -56,6 +71,23 @@ public class JobListServlet extends HttpServlet {
                                         response.getWriter(),
                                         Map.of("error",
                                                         "Unable to retrieve job listings."));
+                }
+        }
+
+        private int parseIntegerParameter(
+                        String value,
+                        int defaultValue,
+                        String parameterName) {
+
+                if (value == null || value.isBlank()) {
+                        return defaultValue;
+                }
+
+                try {
+                        return Integer.parseInt(value);
+                } catch (NumberFormatException e) {
+                        throw new IllegalArgumentException(
+                                        parameterName + " must be a valid integer.");
                 }
         }
 }
